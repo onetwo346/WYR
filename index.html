@@ -91,11 +91,13 @@
             color: white;
             cursor: pointer;
             transition: all 0.3s ease;
+            animation: bounce 2s infinite;
         }
 
         .choice:hover {
             background: rgba(255, 255, 255, 0.2);
             transform: translateY(-5px);
+            animation: none; /* Stop bounce on hover */
         }
 
         .fact {
@@ -104,27 +106,30 @@
             opacity: 0.8;
         }
 
-        .name-btn {
-            display: block;
-            margin: 30px auto;
-            padding: 10px 20px;
-            background: #f1c40f;
-            border: none;
-            border-radius: 20px;
-            font-size: 1.2em;
-            cursor: pointer;
-            transition: all 0.3s ease;
+        /* Bounce animation to hint at tapping */
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
         }
 
-        .name-btn:hover {
-            background: #f39c12;
+        /* Fade transition for new questions */
+        .fade-out {
+            animation: fadeOut 0.5s forwards;
         }
 
-        .names-display {
-            color: white;
-            text-align: center;
-            margin-top: 20px;
-            font-size: 1.1em;
+        .fade-in {
+            animation: fadeIn 0.5s forwards;
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         @media (max-width: 600px) {
@@ -140,7 +145,7 @@
 <body>
     <div class="intro-page" id="introPage">
         <h1>WYR</h1>
-        <p>Explore a universe of choices with Would You Rather? Every decision comes with fascinating facts and takes you deeper into the journey. No wrong answers, just endless fun and learning!</p>
+        <p>Explore a universe of choices with Would You Rather? Tap either option to dive deeper into fun facts and new questions—no wrong answers, just endless discovery!</p>
         <button class="enter-btn" onclick="enterGame()">Tap to Enter WYR</button>
     </div>
 
@@ -157,17 +162,10 @@
                     <div class="fact" id="fact2"></div>
                 </div>
             </div>
-            <button class="name-btn" onclick="showNames()">Tap for Rare Names</button>
-            <div class="names-display" id="namesDisplay"></div>
         </div>
     </div>
 
     <script>
-        const rareNames = [
-            "Zephyrine", "Quillian", "Xanthea", "Vespertilio", "Aurembiaix",
-            "Thelonious", "Eupraxia", "Zosimus", "Calixto", "Ysmeine"
-        ];
-
         // Fallback local questions with facts
         const localQuestions = [
             {
@@ -212,54 +210,60 @@
 
         function loadQuestion() {
             if (questionPool.length < 2 && apiQuestions.length > 0) {
-                fetchAPIQuestions(); // Refresh pool if running low
+                fetchAPIQuestions();
                 return;
             }
 
+            const choice1 = document.getElementById('choice1');
+            const choice2 = document.getElementById('choice2');
             const option1 = document.getElementById('option1');
             const option2 = document.getElementById('option2');
             const fact1 = document.getElementById('fact1');
             const fact2 = document.getElementById('fact2');
 
-            if (questionPool.length >= 2) {
-                // Pair two questions for WYR
-                const q1Index = Math.floor(Math.random() * questionPool.length);
-                let q1 = questionPool[q1Index];
-                questionPool.splice(q1Index, 1);
-                usedQuestions.add(q1.question);
+            // Fade out current choices
+            choice1.classList.add('fade-out');
+            choice2.classList.add('fade-out');
 
-                const q2Index = Math.floor(Math.random() * questionPool.length);
-                let q2 = questionPool[q2Index];
-                questionPool.splice(q2Index, 1);
-                usedQuestions.add(q2.question);
+            setTimeout(() => {
+                if (questionPool.length >= 2) {
+                    const q1Index = Math.floor(Math.random() * questionPool.length);
+                    let q1 = questionPool[q1Index];
+                    questionPool.splice(q1Index, 1);
+                    usedQuestions.add(q1.question);
 
-                option1.innerHTML = `Be an expert in ${q1.category}`;
-                fact1.innerHTML = `Fact: ${q1.correct_answer} is part of this field!`;
-                option2.innerHTML = `Be an expert in ${q2.category}`;
-                fact2.innerHTML = `Fact: ${q2.correct_answer} is part of this field!`;
-            } else {
-                // Fallback to local if API runs out
-                const q = localQuestions[usedQuestions.size % localQuestions.length];
-                option1.innerHTML = q.options[0];
-                fact1.innerHTML = q.facts[0];
-                option2.innerHTML = q.options[1];
-                fact2.innerHTML = q.facts[1];
-            }
+                    const q2Index = Math.floor(Math.random() * questionPool.length);
+                    let q2 = questionPool[q2Index];
+                    questionPool.splice(q2Index, 1);
+                    usedQuestions.add(q2.question);
+
+                    option1.innerHTML = `Be an expert in ${q1.category}`;
+                    fact1.innerHTML = `Fact: ${q1.correct_answer} is part of this field!`;
+                    option2.innerHTML = `Be an expert in ${q2.category}`;
+                    fact2.innerHTML = `Fact: ${q2.correct_answer} is part of this field!`;
+                } else {
+                    const q = localQuestions[usedQuestions.size % localQuestions.length];
+                    option1.innerHTML = q.options[0];
+                    fact1.innerHTML = q.facts[0];
+                    option2.innerHTML = q.options[1];
+                    fact2.innerHTML = q.facts[1];
+                }
+
+                // Reset and fade in new choices
+                choice1.classList.remove('fade-out');
+                choice2.classList.remove('fade-out');
+                choice1.classList.add('fade-in');
+                choice2.classList.add('fade-in');
+
+                setTimeout(() => {
+                    choice1.classList.remove('fade-in');
+                    choice2.classList.remove('fade-in');
+                }, 500);
+            }, 500);
         }
 
         function nextQuestion(choiceNum) {
             loadQuestion();
-        }
-
-        function showNames() {
-            const namesDisplay = document.getElementById('namesDisplay');
-            const randomName = rareNames[Math.floor(Math.random() * rareNames.length)];
-            namesDisplay.textContent = `Rare Name: ${randomName}`;
-            namesDisplay.style.opacity = '0';
-            setTimeout(() => {
-                namesDisplay.style.transition = 'opacity 0.5s';
-                namesDisplay.style.opacity = '1';
-            }, 100);
         }
     </script>
 </body>
