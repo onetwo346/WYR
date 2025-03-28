@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WYR - Would You Rather?</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Intro Page Styles */
+        .intro-page {
+            height: 100vh;
+            background: linear-gradient(45deg, #1a1a1a, #2c3e50);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .intro-page h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .intro-page p {
+            font-size: 1.2em;
+            max-width: 600px;
+            margin-bottom: 30px;
+        }
+
+        .enter-btn {
+            padding: 15px 30px;
+            font-size: 1.5em;
+            background: #e74c3c;
+            border: none;
+            color: white;
+            border-radius: 25px;
+            cursor: pointer;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        /* Game Page Styles */
+        .game-page {
+            display: none;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #3498db, #9b59b6);
+            padding: 20px;
+        }
+
+        .game-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .wyr-title {
+            color: white;
+            text-align: center;
+            font-size: 2.5em;
+            margin: 20px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .choices {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .choice {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid white;
+            border-radius: 15px;
+            padding: 20px;
+            width: 45%;
+            min-width: 300px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .choice:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-5px);
+        }
+
+        .name-btn {
+            display: block;
+            margin: 30px auto;
+            padding: 10px 20px;
+            background: #f1c40f;
+            border: none;
+            border-radius: 20px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .name-btn:hover {
+            background: #f39c12;
+        }
+
+        .names-display {
+            color: white;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 1.1em;
+        }
+
+        @media (max-width: 600px) {
+            .choice {
+                width: 100%;
+            }
+            .wyr-title {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Intro Page -->
+    <div class="intro-page" id="introPage">
+        <h1>WYR</h1>
+        <p>Welcome to Would You Rather? - The ultimate game of crazy choices and mind-bending decisions! Tap to enter a world of unlimited fun and unexpected questions.</p>
+        <button class="enter-btn" onclick="enterGame()">Tap to Enter WYR</button>
+    </div>
+
+    <!-- Game Page -->
+    <div class="game-page" id="gamePage">
+        <div class="game-container">
+            <h1 class="wyr-title">Would You Rather?</h1>
+            <div class="choices" id="choices">
+                <div class="choice" id="choice1" onclick="vote(1)"></div>
+                <div class="choice" id="choice2" onclick="vote(2)"></div>
+            </div>
+            <button class="name-btn" onclick="showNames()">Tap for Rare Names</button>
+            <div class="names-display" id="namesDisplay"></div>
+        </div>
+    </div>
+
+    <script>
+        // Local fallback questions
+        const wyrQuestions = [
+            ["Fly like a bird", "Swim like a fish"],
+            ["Live in space", "Live underwater"],
+            ["Be invisible", "Read minds"],
+            ["Time travel to past", "Time travel to future"],
+            ["Have super strength", "Have super speed"]
+        ];
+
+        const rareNames = [
+            "Zephyrine", "Quillian", "Xanthea", "Vespertilio", "Aurembiaix",
+            "Thelonious", "Eupraxia", "Zosimus", "Calixto", "Ysmeine"
+        ];
+
+        let currentQuestion = 0;
+        let apiQuestions = [];
+
+        function enterGame() {
+            document.getElementById('introPage').style.display = 'none';
+            document.getElementById('gamePage').style.display = 'block';
+            fetchAPIQuestions();
+        }
+
+        // Fetch questions from Open Trivia DB API
+        async function fetchAPIQuestions() {
+            try {
+                const response = await fetch('https://opentdb.com/api.php?amount=10&type=multiple');
+                const data = await response.json();
+                apiQuestions = data.results.map(q => ({
+                    question: q.question,
+                    options: [q.correct_answer, q.incorrect_answers[0]] // Taking first incorrect answer as second option
+                }));
+                loadQuestion();
+            } catch (error) {
+                console.error('Error fetching API questions:', error);
+                loadQuestion(true); // Fallback to local questions
+            }
+        }
+
+        function loadQuestion(useLocal = false) {
+            const choice1 = document.getElementById('choice1');
+            const choice2 = document.getElementById('choice2');
+            
+            if (useLocal || apiQuestions.length === 0) {
+                const question = wyrQuestions[currentQuestion % wyrQuestions.length];
+                choice1.innerHTML = question[0];
+                choice2.innerHTML = question[1];
+            } else {
+                const q = apiQuestions[currentQuestion % apiQuestions.length];
+                choice1.innerHTML = `Experience: ${q.options[0]}`; // Format as WYR
+                choice2.innerHTML = `Experience: ${q.options[1]}`;
+            }
+        }
+
+        function vote(choiceNum) {
+            currentQuestion++;
+            loadQuestion(apiQuestions.length === 0);
+        }
+
+        function showNames() {
+            const namesDisplay = document.getElementById('namesDisplay');
+            const randomName = rareNames[Math.floor(Math.random() * rareNames.length)];
+            namesDisplay.textContent = `Rare Name: ${randomName}`;
+            namesDisplay.style.opacity = '0';
+            setTimeout(() => {
+                namesDisplay.style.transition = 'opacity 0.5s';
+                namesDisplay.style.opacity = '1';
+            }, 100);
+        }
+    </script>
+</body>
+</html>
