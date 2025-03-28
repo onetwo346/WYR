@@ -12,7 +12,6 @@
             font-family: Arial, sans-serif;
         }
 
-        /* Intro Page Styles */
         .intro-page {
             height: 100vh;
             background: linear-gradient(45deg, #1a1a1a, #2c3e50);
@@ -55,7 +54,6 @@
             100% { transform: scale(1); }
         }
 
-        /* Game Page Styles */
         .game-page {
             display: none;
             min-height: 100vh;
@@ -100,6 +98,12 @@
             transform: translateY(-5px);
         }
 
+        .fact {
+            font-size: 0.9em;
+            margin-top: 10px;
+            opacity: 0.8;
+        }
+
         .name-btn {
             display: block;
             margin: 30px auto;
@@ -134,20 +138,24 @@
     </style>
 </head>
 <body>
-    <!-- Intro Page -->
     <div class="intro-page" id="introPage">
         <h1>WYR</h1>
-        <p>Welcome to Would You Rather? - The ultimate game of crazy choices and mind-bending decisions! Tap to enter a world of unlimited fun and unexpected questions.</p>
+        <p>Explore a universe of choices with Would You Rather? Every decision comes with fascinating facts and takes you deeper into the journey. No wrong answers, just endless fun and learning!</p>
         <button class="enter-btn" onclick="enterGame()">Tap to Enter WYR</button>
     </div>
 
-    <!-- Game Page -->
     <div class="game-page" id="gamePage">
         <div class="game-container">
             <h1 class="wyr-title">Would You Rather?</h1>
             <div class="choices" id="choices">
-                <div class="choice" id="choice1" onclick="vote(1)"></div>
-                <div class="choice" id="choice2" onclick="vote(2)"></div>
+                <div class="choice" id="choice1" onclick="nextQuestion(1)">
+                    <div class="option" id="option1"></div>
+                    <div class="fact" id="fact1"></div>
+                </div>
+                <div class="choice" id="choice2" onclick="nextQuestion(2)">
+                    <div class="option" id="option2"></div>
+                    <div class="fact" id="fact2"></div>
+                </div>
             </div>
             <button class="name-btn" onclick="showNames()">Tap for Rare Names</button>
             <div class="names-display" id="namesDisplay"></div>
@@ -155,22 +163,32 @@
     </div>
 
     <script>
-        // Local fallback questions
-        const wyrQuestions = [
-            ["Fly like a bird", "Swim like a fish"],
-            ["Live in space", "Live underwater"],
-            ["Be invisible", "Read minds"],
-            ["Time travel to past", "Time travel to future"],
-            ["Have super strength", "Have super speed"]
-        ];
-
         const rareNames = [
             "Zephyrine", "Quillian", "Xanthea", "Vespertilio", "Aurembiaix",
             "Thelonious", "Eupraxia", "Zosimus", "Calixto", "Ysmeine"
         ];
 
-        let currentQuestion = 0;
+        // Fallback local questions with facts
+        const localQuestions = [
+            {
+                options: ["Live in the Arctic", "Live in the Sahara"],
+                facts: [
+                    "The Arctic has polar bears and 24-hour darkness in winter!",
+                    "The Sahara is the largest hot desert, covering 3.6 million square miles!"
+                ]
+            },
+            {
+                options: ["Explore space", "Explore the ocean"],
+                facts: [
+                    "Only 12 people have walked on the moon!",
+                    "Over 70% of Earth's surface is ocean, and most is unexplored!"
+                ]
+            }
+        ];
+
         let apiQuestions = [];
+        let usedQuestions = new Set();
+        let questionPool = [];
 
         function enterGame() {
             document.getElementById('introPage').style.display = 'none';
@@ -178,40 +196,59 @@
             fetchAPIQuestions();
         }
 
-        // Fetch questions from Open Trivia DB API
         async function fetchAPIQuestions() {
             try {
-                const response = await fetch('https://opentdb.com/api.php?amount=10&type=multiple');
+                const response = await fetch('https://opentdb.com/api.php?amount=50&type=multiple');
                 const data = await response.json();
-                apiQuestions = data.results.map(q => ({
-                    question: q.question,
-                    options: [q.correct_answer, q.incorrect_answers[0]] // Taking first incorrect answer as second option
-                }));
+                apiQuestions = data.results;
+                questionPool = [...apiQuestions];
                 loadQuestion();
             } catch (error) {
                 console.error('Error fetching API questions:', error);
-                loadQuestion(true); // Fallback to local questions
+                questionPool = [...localQuestions];
+                loadQuestion();
             }
         }
 
-        function loadQuestion(useLocal = false) {
-            const choice1 = document.getElementById('choice1');
-            const choice2 = document.getElementById('choice2');
-            
-            if (useLocal || apiQuestions.length === 0) {
-                const question = wyrQuestions[currentQuestion % wyrQuestions.length];
-                choice1.innerHTML = question[0];
-                choice2.innerHTML = question[1];
+        function loadQuestion() {
+            if (questionPool.length < 2 && apiQuestions.length > 0) {
+                fetchAPIQuestions(); // Refresh pool if running low
+                return;
+            }
+
+            const option1 = document.getElementById('option1');
+            const option2 = document.getElementById('option2');
+            const fact1 = document.getElementById('fact1');
+            const fact2 = document.getElementById('fact2');
+
+            if (questionPool.length >= 2) {
+                // Pair two questions for WYR
+                const q1Index = Math.floor(Math.random() * questionPool.length);
+                let q1 = questionPool[q1Index];
+                questionPool.splice(q1Index, 1);
+                usedQuestions.add(q1.question);
+
+                const q2Index = Math.floor(Math.random() * questionPool.length);
+                let q2 = questionPool[q2Index];
+                questionPool.splice(q2Index, 1);
+                usedQuestions.add(q2.question);
+
+                option1.innerHTML = `Be an expert in ${q1.category}`;
+                fact1.innerHTML = `Fact: ${q1.correct_answer} is part of this field!`;
+                option2.innerHTML = `Be an expert in ${q2.category}`;
+                fact2.innerHTML = `Fact: ${q2.correct_answer} is part of this field!`;
             } else {
-                const q = apiQuestions[currentQuestion % apiQuestions.length];
-                choice1.innerHTML = `Experience: ${q.options[0]}`; // Format as WYR
-                choice2.innerHTML = `Experience: ${q.options[1]}`;
+                // Fallback to local if API runs out
+                const q = localQuestions[usedQuestions.size % localQuestions.length];
+                option1.innerHTML = q.options[0];
+                fact1.innerHTML = q.facts[0];
+                option2.innerHTML = q.options[1];
+                fact2.innerHTML = q.facts[1];
             }
         }
 
-        function vote(choiceNum) {
-            currentQuestion++;
-            loadQuestion(apiQuestions.length === 0);
+        function nextQuestion(choiceNum) {
+            loadQuestion();
         }
 
         function showNames() {
